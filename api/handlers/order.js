@@ -1,3 +1,5 @@
+const { Op } = require("sequelize");
+
 const { Order, Service, sequelize } = require("../../db/models");
 
 const getOrder = async (req, res) => {
@@ -23,7 +25,8 @@ const getOrder = async (req, res) => {
         return res.status(200).json(ret);
     }
     catch(err){
-        ret["error"] = err
+        console.error(`Error getting an order info for the order with id: ${orderId}, Error: ${err}`);
+        ret["error"] = err.toString();
         return res.status(400).json(ret);
     }
 }
@@ -48,7 +51,8 @@ const getAllOrders = async (req, res) => {
         return res.status(200).json(ret);
     }
     catch(err){
-        ret["error"] = err
+        console.error(`Error retrieving all the orders, Error: ${err}`);
+        ret["error"] = err.toString();
         return res.status(400).json(ret);
     }
 }
@@ -58,8 +62,20 @@ const createOrder = async (req, res) => {
         error: null,
         data: null
     }
+    const orderInfo = req.body;
     try {
-        const orderInfo = req.body;
+        const lastOrder = await Order.findOne({
+            where: {
+                datetime: {
+                    [Op.gt]: new Date(new Date() - 3 * 60 * 60 * 1000)
+                }
+            },
+            limit: 1
+        })
+        if(lastOrder){
+            ret["error"] = "An order can not be created within 3 hours of an existing order"
+            return res.status(400).json(ret);
+        }
         const order = await Order.create({
             totalfee: orderInfo.totalfee
         });
@@ -73,10 +89,12 @@ const createOrder = async (req, res) => {
         ));
         await order.addServices(services);
         response.services = services.map(service => ({ id: service.id }));
-        return res.status(200).json(response);
+        ret["data"] = response;
+        return res.status(200).json(ret);
     }
     catch(err){
-        ret["error"] = err
+        console.error(`Error creating an order, Payload: ${JSON.stringify(orderInfo)}, Error: ${err}`);
+        ret["error"] = err.toString();
         return res.status(400).json(ret);
     }
 }
@@ -86,8 +104,20 @@ const updateOrder = async (req, res) => {
         error: null,
         data: null
     }
+    const orderInfo = req.body;
     try {
-        const orderInfo = req.body;
+        const lastOrder = await Order.findOne({
+            where: {
+                datetime: {
+                    [Op.gt]: new Date(new Date() - 3 * 60 * 60 * 1000)
+                }
+            },
+            limit: 1
+        })
+        if(lastOrder){
+            ret["error"] = "An order can not be updated within 3 hours of an existing order"
+            return res.status(400).json(ret);
+        }
         const orderId = orderInfo.id;
         let order = await Order.findByPk(orderId);
         if(!order){
@@ -113,7 +143,8 @@ const updateOrder = async (req, res) => {
         return res.status(200).json(ret);
     }
     catch(err){
-        ret["error"] = err
+        console.error(`Error updating an order, Payload: ${JSON.stringify(orderInfo)}, Error: ${err}`);
+        ret["error"] = err.toString();
         return res.status(400).json(ret);
     }
 }

@@ -43,8 +43,8 @@ const Order = sequelize.define('Order', {
     // Other model options go here
 });
 
-Order.belongsToMany(Service, { through: "OrderService"});
-Service.belongsToMany(Order, { through: "OrderService" });
+Order.belongsToMany(Service, { through: "OrderService", onDelete: 'CASCADE' });
+Service.belongsToMany(Order, { through: "OrderService", onDelete: 'CASCADE' });
 
 
 module.exports = {
